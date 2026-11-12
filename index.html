@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" content="#1e3a8a">
+    <meta name="color-scheme" content="light dark">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Kopffrei">
@@ -14,9 +15,41 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        :root {
+            --bg: #dbe3ec;
+            --card: #ffffff;
+            --text: #0f172a;
+            --sub: #475569;
+            --border: #c3cedb;
+            --input: #ffffff;
+            --chip: #e2e8f0;
+            --nav: #ffffff;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --card: #1e293b;
+                --text: #f1f5f9;
+                --sub: #94a3b8;
+                --border: #334155;
+                --input: #0f172a;
+                --chip: #334155;
+                --nav: #1e293b;
+            }
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { background: var(--bg); }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         #root { min-height: 100vh; }
+        .app-bg { background: var(--bg); }
+        .card { background: var(--card); border: 1px solid var(--border); }
+        .t-main { color: var(--text); }
+        .t-sub { color: var(--sub); }
+        .chip { background: var(--chip); color: var(--text); }
+        .nav { background: var(--nav); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
+        .field { background: var(--input); color: var(--text); border: 2px solid var(--border); font-size: 16px; }
+        .field:focus { outline: none; border-color: #2563eb; }
+        .header { background: linear-gradient(135deg, #1e3a8a, #0f766e); }
     </style>
 </head>
 <body>
@@ -31,19 +64,48 @@
         const Trash2 = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
         const Edit2 = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>;
         const ChevronRight = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>;
+        const ChevronDown = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>;
         const Calendar = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
-        const Circle = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/></svg>;
         const Star = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
         const AlertCircle = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
         const Download = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+        const Search = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
 
+        const APP_VERSION = '4';
         const STORAGE_KEY = 'kopffrei-data';
+        const FOKUS_LIMIT = 10;
+        const DEFAULT_PRIO = 3;
+
+        const NAMES = {
+            sammelbecken: 'Sammelbecken',
+            durchgegangen: 'Durchgegangen',
+            fokus: 'Fokus',
+            zweiMin: '2 Minuten',
+            done: 'Erledigt',
+            irgendwann: 'Irgendwann-vielleicht'
+        };
+
+        // Prioritäts-Farben (1 = am wichtigsten)
+        const PRIO = {
+            1: { bg: '#4c1d95', fg: '#ffffff' },
+            2: { bg: '#6d28d9', fg: '#ffffff' },
+            3: { bg: '#8b5cf6', fg: '#ffffff' },
+            4: { bg: '#c4b5fd', fg: '#2e1065' },
+            5: { bg: '#ede9fe', fg: '#2e1065' }
+        };
+
+        // Deadline-Farben (linker Rand der Karte)
+        const EDGE = { red: '#ef4444', orange: '#f97316', yellow: '#eab308' };
+        const STATUS_TEXT = { red: '#ef4444', orange: '#f97316', yellow: '#ca8a04' };
+
+        const BTN = 'text-sm px-3 py-2 rounded-lg font-semibold';
 
         const KopffreiApp = () => {
-            const [activeTab, setActiveTab] = useState('sammelbecken');
+            const [activeTab, setActiveTab] = useState('start');
             const [sammelbecken, setSammelbecken] = useState([]);
             const [durchgegangen, setDurchgegangen] = useState([]);
             const [fokus, setFokus] = useState([]);
+            const [zweiMin, setZweiMin] = useState([]);
             const [done, setDone] = useState([]);
             const [irgendwann, setIrgendwann] = useState([]);
             const [stopDoing, setStopDoing] = useState([]);
@@ -59,6 +121,21 @@
             const [loaded, setLoaded] = useState(false);
             const [backupText, setBackupText] = useState('');
             const [backupMsg, setBackupMsg] = useState('');
+            const [search, setSearch] = useState('');
+            const [showDone, setShowDone] = useState(false);
+            const [undo, setUndo] = useState(null);
+            const [reviewIds, setReviewIds] = useState(null);
+            const [reviewIndex, setReviewIndex] = useState(0);
+
+            const setters = {
+                sammelbecken: setSammelbecken,
+                durchgegangen: setDurchgegangen,
+                fokus: setFokus,
+                zweiMin: setZweiMin,
+                done: setDone,
+                irgendwann: setIrgendwann,
+                stopDoing: setStopDoing
+            };
 
             // PWA Installation
             useEffect(() => {
@@ -88,6 +165,7 @@
                         setSammelbecken(data.sammelbecken || []);
                         setDurchgegangen(data.durchgegangen || []);
                         setFokus(data.fokus || []);
+                        setZweiMin(data.zweiMin || []);
                         setDone(data.done || []);
                         setIrgendwann(data.irgendwann || []);
                         setStopDoing(data.stopDoing || []);
@@ -103,16 +181,54 @@
             useEffect(() => {
                 if (!loaded) return;
                 localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                    sammelbecken, durchgegangen, fokus, done, irgendwann, stopDoing, nordstern
+                    sammelbecken, durchgegangen, fokus, zweiMin, done, irgendwann, stopDoing, nordstern
                 }));
-            }, [loaded, sammelbecken, durchgegangen, fokus, done, irgendwann, stopDoing, nordstern]);
+            }, [loaded, sammelbecken, durchgegangen, fokus, zweiMin, done, irgendwann, stopDoing, nordstern]);
+
+            // Rückgängig-Leiste nach 8 Sekunden ausblenden
+            useEffect(() => {
+                if (!undo) return;
+                const timer = setTimeout(() => setUndo(null), 8000);
+                return () => clearTimeout(timer);
+            }, [undo]);
+
+            // Jede Aktion merkt sich den Stand davor
+            const act = (label, fn) => {
+                const snap = { sammelbecken, durchgegangen, fokus, zweiMin, done, irgendwann, stopDoing, reviewIndex };
+                fn();
+                setUndo({ label, snap, id: Date.now() });
+            };
+
+            const doUndo = () => {
+                if (!undo) return;
+                const s = undo.snap;
+                setSammelbecken(s.sammelbecken);
+                setDurchgegangen(s.durchgegangen);
+                setFokus(s.fokus);
+                setZweiMin(s.zweiMin);
+                setDone(s.done);
+                setIrgendwann(s.irgendwann);
+                setStopDoing(s.stopDoing);
+                setReviewIndex(s.reviewIndex);
+                setUndo(null);
+            };
+
+            // Suche
+            const q = search.trim().toLowerCase();
+            const match = (t) => !q || (t.text || '').toLowerCase().includes(q);
+
+            // Sortierung nach Priorität (1 oben), sonst Reihenfolge wie eingetragen
+            const byPrio = (list) => list
+                .map((t, i) => ({ t, i }))
+                .sort((a, b) => ((a.t.prio || DEFAULT_PRIO) - (b.t.prio || DEFAULT_PRIO)) || (a.i - b.i))
+                .map(x => x.t);
 
             // Backup
             const getBackupString = () => JSON.stringify({
                 app: 'kopffrei',
-                version: 1,
+                version: 2,
                 exportedAt: new Date().toISOString(),
-                sammelbecken, durchgegangen, fokus, done, irgendwann, stopDoing, nordstern
+                sammelbecken, durchgegangen, fokus, zweiMin, done, irgendwann, stopDoing, nordstern
             });
 
             const copyBackup = async () => {
@@ -134,6 +250,7 @@
                     setSammelbecken(data.sammelbecken || []);
                     setDurchgegangen(data.durchgegangen || []);
                     setFokus(data.fokus || []);
+                    setZweiMin(data.zweiMin || []);
                     setDone(data.done || []);
                     setIrgendwann(data.irgendwann || []);
                     setStopDoing(data.stopDoing || []);
@@ -149,7 +266,7 @@
                 if (newTask.trim()) {
                     setSammelbecken([...sammelbecken, {
                         id: Date.now(),
-                        text: newTask,
+                        text: newTask.trim(),
                         deadline: newTaskDeadline || null,
                         createdAt: new Date().toISOString()
                     }]);
@@ -181,14 +298,49 @@
             };
 
             const moveTask = (task, fromList, toList) => {
-                const setters = { sammelbecken: setSammelbecken, durchgegangen: setDurchgegangen, fokus: setFokus, done: setDone, irgendwann: setIrgendwann };
-                setters[fromList](prev => prev.filter(t => t.id !== task.id));
-                setters[toList](prev => [...prev, task]);
+                let moved = task;
+                if (toList === 'done') {
+                    moved = { ...task, doneAt: new Date().toISOString(), doneFrom: fromList };
+                } else if ((toList === 'fokus' || toList === 'zweiMin') && !task.prio) {
+                    moved = { ...task, prio: DEFAULT_PRIO };
+                }
+                const label = toList === 'done' ? 'Aufgabe erledigt' : `Verschoben nach „${NAMES[toList]}“`;
+                act(label, () => {
+                    setters[fromList](prev => prev.filter(t => t.id !== task.id));
+                    setters[toList](prev => [...prev, moved]);
+                });
             };
 
-            const deleteTask = (taskId, listName) => {
-                const setters = { sammelbecken: setSammelbecken, durchgegangen: setDurchgegangen, fokus: setFokus, done: setDone, irgendwann: setIrgendwann, stopDoing: setStopDoing };
-                setters[listName](prev => prev.filter(t => t.id !== taskId));
+            // Fokus-Warnung beim Hinzufügen; gibt zurück, ob verschoben wurde
+            const moveToFokus = (task, fromList) => {
+                if (fokus.length >= FOKUS_LIMIT) {
+                    const ok = window.confirm(`Im Fokus sind schon ${fokus.length} Aufgaben (Limit: ${FOKUS_LIMIT}). Trotzdem hinzufügen?`);
+                    if (!ok) return false;
+                }
+                moveTask(task, fromList, 'fokus');
+                return true;
+            };
+
+            const restoreDone = (task) => {
+                const from = task.doneFrom;
+                const toList = (from && from !== 'done' && from !== 'stopDoing' && setters[from]) ? from : 'fokus';
+                const { doneAt, doneFrom, ...rest } = task;
+                act(`Zurückgeholt nach „${NAMES[toList]}“`, () => {
+                    setDone(prev => prev.filter(t => t.id !== task.id));
+                    setters[toList](prev => [...prev, rest]);
+                });
+            };
+
+            const deleteTask = (task, listName) => {
+                act(listName === 'stopDoing' ? 'Eintrag gelöscht' : 'Aufgabe gelöscht', () => {
+                    setters[listName](prev => prev.filter(t => t.id !== task.id));
+                });
+            };
+
+            const cyclePrio = (task, listName) => {
+                setters[listName](prev => prev.map(t =>
+                    t.id === task.id ? { ...t, prio: ((t.prio || DEFAULT_PRIO) % 5) + 1 } : t
+                ));
             };
 
             const startEdit = (task) => {
@@ -197,76 +349,149 @@
                 setEditDeadline(task.deadline || '');
             };
 
-            const saveEdit = (taskId, listName) => {
-                const setters = { sammelbecken: setSammelbecken, durchgegangen: setDurchgegangen, fokus: setFokus, done: setDone, irgendwann: setIrgendwann };
-                setters[listName](prev => prev.map(t => t.id === taskId ? { ...t, text: editText, deadline: editDeadline || null } : t));
+            const cancelEdit = () => {
                 setEditingTask(null);
                 setEditText('');
                 setEditDeadline('');
             };
 
+            const saveEdit = (taskId, listName) => {
+                if (!editText.trim()) return;
+                setters[listName](prev => prev.map(t => t.id === taskId ? { ...t, text: editText.trim(), deadline: editDeadline || null } : t));
+                cancelEdit();
+            };
+
             const getTasksWithDeadlines = () => {
                 return [
-                    ...sammelbecken.map(t => ({...t, list: 'sammelbecken', listName: 'Sammelbecken'})),
-                    ...durchgegangen.map(t => ({...t, list: 'durchgegangen', listName: 'Durchgegangen'})),
-                    ...fokus.map(t => ({...t, list: 'fokus', listName: 'Fokus'})),
-                    ...irgendwann.map(t => ({...t, list: 'irgendwann', listName: 'Irgendwann-vielleicht'}))
-                ].filter(t => t.deadline).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+                    ...fokus.map(t => ({...t, listName: NAMES.fokus})),
+                    ...zweiMin.map(t => ({...t, listName: NAMES.zweiMin})),
+                    ...sammelbecken.map(t => ({...t, listName: NAMES.sammelbecken})),
+                    ...durchgegangen.map(t => ({...t, listName: NAMES.durchgegangen})),
+                    ...irgendwann.map(t => ({...t, listName: NAMES.irgendwann}))
+                ].filter(t => t.deadline).filter(match).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+            };
+
+            // Durchgehen-Modus
+            const startReview = () => {
+                if (sammelbecken.length === 0) return;
+                setReviewIds(sammelbecken.map(t => t.id));
+                setReviewIndex(0);
+            };
+            const closeReview = () => {
+                setReviewIds(null);
+                setReviewIndex(0);
+            };
+
+            let reviewPos = reviewIndex;
+            let reviewTask = null;
+            if (reviewIds) {
+                while (reviewPos < reviewIds.length) {
+                    const found = sammelbecken.find(t => t.id === reviewIds[reviewPos]);
+                    if (found) { reviewTask = found; break; }
+                    reviewPos++;
+                }
+            }
+
+            const reviewMove = (toList) => {
+                if (!reviewTask) return;
+                if (toList === 'fokus') {
+                    if (!moveToFokus(reviewTask, 'sammelbecken')) return;
+                } else if (toList === 'delete') {
+                    deleteTask(reviewTask, 'sammelbecken');
+                } else {
+                    moveTask(reviewTask, 'sammelbecken', toList);
+                }
+                setReviewIndex(reviewPos + 1);
+            };
+
+            const deadlineBadge = (task) => {
+                const ds = getDeadlineStatus(task.deadline);
+                if (!ds) return null;
+                const badge = ds.color === 'red' ? 'bg-red-500 text-white'
+                    : ds.color === 'orange' ? 'bg-orange-500 text-white'
+                    : ds.color === 'yellow' ? 'bg-yellow-500 text-white'
+                    : 'chip';
+                return (
+                    <div className="flex items-center gap-2 flex-wrap mt-2">
+                        <span className={`text-xs px-2 py-1 rounded-full font-semibold flex items-center gap-1 ${badge}`}>
+                            {ds.status === 'overdue' && <AlertCircle size={12} />}
+                            <Calendar size={12} />
+                            {formatDate(task.deadline)}
+                        </span>
+                        <span className="text-xs font-semibold" style={{ color: STATUS_TEXT[ds.color] || 'var(--sub)' }}>{ds.text}</span>
+                    </div>
+                );
+            };
+
+            const prioButton = (task, listName) => {
+                const p = task.prio || DEFAULT_PRIO;
+                return (
+                    <button onClick={() => cyclePrio(task, listName)} className={BTN} style={{ background: PRIO[p].bg, color: PRIO[p].fg }}>
+                        Prio {p}
+                    </button>
+                );
             };
 
             // Wird als normale Funktion aufgerufen (nicht als Komponente),
             // damit das Eingabefeld beim Tippen den Fokus behält.
             const renderTask = (task, listName) => {
-                const deadlineStatus = getDeadlineStatus(task.deadline);
-                const borderColors = { red: 'border-red-400 bg-red-50', orange: 'border-orange-400 bg-orange-50', yellow: 'border-yellow-400 bg-yellow-50', blue: 'border-blue-100 bg-white' };
-                const badgeColors = { red: 'bg-red-500 text-white', orange: 'bg-orange-500 text-white', yellow: 'bg-yellow-500 text-white', blue: 'bg-blue-100 text-blue-700' };
+                const ds = getDeadlineStatus(task.deadline);
+                const edge = ds && EDGE[ds.color];
 
                 return (
-                    <div key={task.id} className={`rounded-xl p-4 mb-3 shadow-sm border ${deadlineStatus ? borderColors[deadlineStatus.color] : 'border-blue-100 bg-white'}`}>
+                    <div key={task.id} className="card rounded-xl p-4 mb-3 shadow-sm" style={edge ? { borderLeft: `5px solid ${edge}` } : undefined}>
                         {editingTask === task.id ? (
                             <div className="space-y-3">
-                                <input type="text" value={editText} onChange={(e) => setEditText(e.target.value)} className="w-full p-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" autoFocus />
-                                <div className="flex items-center gap-2">
+                                <input type="text" value={editText} onChange={(e) => setEditText(e.target.value)} className="field w-full p-2 rounded-lg" autoFocus />
+                                <div className="flex items-center gap-2 t-sub">
                                     <Calendar size={18} />
-                                    <input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} className="flex-1 p-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                                    {editDeadline && <button onClick={() => setEditDeadline('')} className="text-gray-400"><X size={18} /></button>}
+                                    <input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} className="field flex-1 p-2 rounded-lg" />
+                                    {editDeadline && <button onClick={() => setEditDeadline('')} className="t-sub"><X size={18} /></button>}
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={() => saveEdit(task.id, listName)} className="flex-1 p-2 bg-green-500 text-white rounded-lg font-semibold">Speichern</button>
-                                    <button onClick={() => { setEditingTask(null); setEditText(''); setEditDeadline(''); }} className="p-2 bg-gray-300 rounded-lg"><X size={20} /></button>
+                                    <button onClick={() => saveEdit(task.id, listName)} className="flex-1 p-2 bg-emerald-600 text-white rounded-lg font-semibold">Speichern</button>
+                                    <button onClick={cancelEdit} className="chip p-2 rounded-lg"><X size={20} /></button>
                                 </div>
                             </div>
                         ) : (
                             <>
-                                <div className="flex items-start justify-between mb-2">
-                                    <div className="flex-1">
-                                        <p className="text-gray-800 font-medium mb-2">{task.text}</p>
-                                        {task.deadline && (
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <span className={`text-xs px-2 py-1 rounded-full font-semibold flex items-center gap-1 ${badgeColors[deadlineStatus.color]}`}>
-                                                    {deadlineStatus.status === 'overdue' && <AlertCircle size={12} />}
-                                                    <Calendar size={12} />
-                                                    {formatDate(task.deadline)}
-                                                </span>
-                                                <span className={`text-xs font-semibold ${deadlineStatus.color === 'red' ? 'text-red-600' : deadlineStatus.color === 'orange' ? 'text-orange-600' : deadlineStatus.color === 'yellow' ? 'text-yellow-600' : 'text-blue-600'}`}>
-                                                    {deadlineStatus.text}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <button onClick={() => deleteTask(task.id, listName)} className="text-red-400 hover:text-red-600 ml-2"><Trash2 size={18} /></button>
+                                <div className="flex items-start gap-1">
+                                    <p className="t-main font-medium flex-1 break-words pr-1">{task.text}</p>
+                                    <button onClick={() => startEdit(task)} className="t-sub p-1" aria-label="Bearbeiten"><Edit2 size={18} /></button>
+                                    <button onClick={() => deleteTask(task, listName)} className="text-red-500 p-1" aria-label="Löschen"><Trash2 size={18} /></button>
                                 </div>
+                                {deadlineBadge(task)}
                                 <div className="flex gap-2 flex-wrap mt-3">
-                                    <button onClick={() => startEdit(task)} className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg flex items-center gap-1"><Edit2 size={14} />Bearbeiten</button>
-                                    {listName === 'sammelbecken' && <button onClick={() => moveTask(task, 'sammelbecken', 'durchgegangen')} className="text-xs px-3 py-1.5 bg-blue-500 text-white rounded-lg flex items-center gap-1">Durchgegangen<ChevronRight size={14} /></button>}
-                                    {listName === 'durchgegangen' && (
+                                    {listName === 'fokus' && (
                                         <>
-                                            <button onClick={() => moveTask(task, 'durchgegangen', 'fokus')} className="text-xs px-3 py-1.5 bg-green-500 text-white rounded-lg">In Fokus</button>
-                                            <button onClick={() => moveTask(task, 'durchgegangen', 'irgendwann')} className="text-xs px-3 py-1.5 bg-purple-400 text-white rounded-lg">Später</button>
+                                            {prioButton(task, 'fokus')}
+                                            <button onClick={() => moveTask(task, 'fokus', 'done')} className={`${BTN} bg-emerald-600 text-white flex items-center gap-1`}><Check size={16} />Erledigt</button>
+                                            <button onClick={() => moveTask(task, 'fokus', 'durchgegangen')} className={`${BTN} chip`}>Zurück</button>
                                         </>
                                     )}
-                                    {listName === 'fokus' && <button onClick={() => moveTask(task, 'fokus', 'done')} className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg flex items-center gap-1"><Check size={14} />Erledigt</button>}
-                                    {listName === 'irgendwann' && <button onClick={() => moveTask(task, 'irgendwann', 'durchgegangen')} className="text-xs px-3 py-1.5 bg-blue-500 text-white rounded-lg">Jetzt angehen</button>}
+                                    {listName === 'zweiMin' && (
+                                        <>
+                                            {prioButton(task, 'zweiMin')}
+                                            <button onClick={() => moveTask(task, 'zweiMin', 'done')} className={`${BTN} bg-emerald-600 text-white flex items-center gap-1`}><Check size={16} />Erledigt</button>
+                                        </>
+                                    )}
+                                    {listName === 'sammelbecken' && (
+                                        <>
+                                            <button onClick={() => moveTask(task, 'sammelbecken', 'zweiMin')} className={`${BTN} bg-teal-600 text-white`}>⚡ 2 Min</button>
+                                            <button onClick={() => moveTask(task, 'sammelbecken', 'durchgegangen')} className={`${BTN} bg-blue-600 text-white flex items-center gap-1`}>Durchgegangen<ChevronRight size={16} /></button>
+                                            <button onClick={() => moveTask(task, 'sammelbecken', 'done')} className={`${BTN} chip flex items-center gap-1`}><Check size={16} />Erledigt</button>
+                                        </>
+                                    )}
+                                    {listName === 'durchgegangen' && (
+                                        <>
+                                            <button onClick={() => moveToFokus(task, 'durchgegangen')} className={`${BTN} bg-emerald-600 text-white`}>In Fokus</button>
+                                            <button onClick={() => moveTask(task, 'durchgegangen', 'zweiMin')} className={`${BTN} bg-teal-600 text-white`}>⚡ 2 Min</button>
+                                            <button onClick={() => moveTask(task, 'durchgegangen', 'irgendwann')} className={`${BTN} chip`}>Später</button>
+                                        </>
+                                    )}
+                                    {listName === 'irgendwann' && (
+                                        <button onClick={() => moveTask(task, 'irgendwann', 'durchgegangen')} className={`${BTN} bg-blue-600 text-white`}>Jetzt angehen</button>
+                                    )}
                                 </div>
                             </>
                         )}
@@ -274,152 +499,300 @@
                 );
             };
 
+            const renderList = (list, listName, emptyText) => {
+                const items = list.filter(match);
+                if (items.length === 0) {
+                    return <p className="t-sub text-sm italic">{q ? 'Keine Treffer' : emptyText}</p>;
+                }
+                return items.map(task => renderTask(task, listName));
+            };
+
+            const countBadge = (n, warn) => (
+                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${warn ? 'bg-red-500 text-white' : 'chip'}`}>{n}</span>
+            );
+
+            const tabBadge = (n, active) => n > 0 && (
+                <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${active ? 'bg-white text-blue-800' : 'chip'}`}>{n}</span>
+            );
+
+            const tabClass = (name) => `flex-1 py-3 rounded-xl font-semibold ${activeTab === name ? 'bg-blue-700 text-white shadow-md' : 't-sub'}`;
+
+            const boardCount = durchgegangen.length + irgendwann.length;
+            const fokusTooMany = fokus.length > FOKUS_LIMIT;
+            const doneVisible = done.filter(match);
+            const doneOpen = showDone || (q && doneVisible.length > 0);
+            const deadlineTasks = getTasksWithDeadlines();
+
             return (
-                <div className="max-w-md mx-auto bg-gradient-to-b from-blue-50 to-green-50 min-h-screen">
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-b-3xl shadow-lg">
+                <div className="max-w-md mx-auto app-bg min-h-screen">
+                    <div className="header text-white p-6 rounded-b-3xl shadow-lg">
                         <div className="flex items-center justify-between">
                             <div>
                                 <h1 className="text-3xl font-bold mb-1">Kopffrei</h1>
                                 <p className="text-blue-100 text-sm">Mehr schaffen, weniger tun</p>
                             </div>
                             {showInstallButton && (
-                                <button onClick={handleInstallClick} className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-blue-50">
+                                <button onClick={handleInstallClick} className="bg-white text-blue-800 px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
                                     <Download size={18} />Installieren
                                 </button>
                             )}
                         </div>
+                        <div className="mt-4 flex items-center gap-2 bg-white/20 rounded-xl px-3 py-2">
+                            <Search size={18} />
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Aufgaben durchsuchen..."
+                                className="flex-1 bg-transparent placeholder-blue-100 text-white focus:outline-none"
+                                style={{ fontSize: '16px' }}
+                            />
+                            {search && <button onClick={() => setSearch('')} className="text-white"><X size={18} /></button>}
+                        </div>
                     </div>
 
-                    <div className="p-5 pb-28">
-                        {activeTab === 'sammelbecken' && (
-                            <div>
-                                <div className="mb-6">
-                                    <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center gap-2"><Circle size={24} />Sammelbecken</h2>
-                                    <p className="text-gray-600 text-sm">Alles raus aus dem Kopf!</p>
-                                </div>
-                                <div className="mb-6 bg-white rounded-2xl p-4 shadow-md">
+                    <div className="p-5 pb-36">
+                        {/* STARTSEITE */}
+                        {activeTab === 'start' && (
+                            <div className="space-y-7">
+                                {/* Neue Aufgabe */}
+                                <div className="card rounded-2xl p-4 shadow-md">
                                     <div className="flex gap-2 mb-3">
-                                        <input type="text" value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addTask()} placeholder="Neue Aufgabe..." className="flex-1 p-3 border-2 border-blue-200 rounded-xl focus:outline-none focus:border-blue-500 text-gray-800" />
-                                        <button onClick={addTask} className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-5 rounded-xl shadow-md"><Plus /></button>
+                                        <input type="text" value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addTask()} placeholder="Neue Aufgabe..." className="field flex-1 p-3 rounded-xl" />
+                                        <button onClick={addTask} className="bg-blue-700 text-white px-5 rounded-xl shadow-md" aria-label="Hinzufügen"><Plus /></button>
                                     </div>
                                     {!showDeadlineInput ? (
-                                        <button onClick={() => setShowDeadlineInput(true)} className="text-sm text-blue-600 flex items-center gap-1"><Calendar size={16} />Deadline hinzufügen</button>
+                                        <button onClick={() => setShowDeadlineInput(true)} className="text-sm text-blue-600 font-semibold flex items-center gap-1"><Calendar size={16} />Deadline hinzufügen</button>
                                     ) : (
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 t-sub">
                                             <Calendar size={18} />
-                                            <input type="date" value={newTaskDeadline} onChange={(e) => setNewTaskDeadline(e.target.value)} className="flex-1 p-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:border-blue-500" />
-                                            <button onClick={() => { setShowDeadlineInput(false); setNewTaskDeadline(''); }} className="text-gray-400"><X size={20} /></button>
+                                            <input type="date" value={newTaskDeadline} onChange={(e) => setNewTaskDeadline(e.target.value)} className="field flex-1 p-2 rounded-lg" />
+                                            <button onClick={() => { setShowDeadlineInput(false); setNewTaskDeadline(''); }} className="t-sub"><X size={20} /></button>
                                         </div>
                                     )}
                                 </div>
-                                <div className="space-y-3">
-                                    {sammelbecken.length === 0 ? (
-                                        <div className="text-center py-12 text-gray-400">
-                                            <p>Dein Sammelbecken ist leer</p>
+
+                                {/* Fokus */}
+                                <div>
+                                    <h2 className="text-xl font-bold t-main mb-3 flex items-center gap-2">
+                                        <span className="w-3 h-3 bg-emerald-500 rounded-full inline-block"></span>
+                                        Fokus {countBadge(`${fokus.length}/${FOKUS_LIMIT}`, fokusTooMany)}
+                                    </h2>
+                                    {fokusTooMany && (
+                                        <div className="rounded-xl p-3 mb-3 text-sm flex gap-2 t-main" style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid #ef4444' }}>
+                                            <span className="mt-0.5 text-red-500"><AlertCircle size={18} /></span>
+                                            <span>Du hast {fokus.length} Aufgaben im Fokus. Schließe erst etwas ab oder schiebe eine Aufgabe mit „Zurück“ nach „Durchgegangen“.</span>
                                         </div>
-                                    ) : sammelbecken.map(task => renderTask(task, 'sammelbecken'))}
+                                    )}
+                                    {renderList(byPrio(fokus), 'fokus', 'Keine Aufgaben im Fokus')}
+                                </div>
+
+                                {/* 2 Minuten */}
+                                <div>
+                                    <h2 className="text-xl font-bold t-main mb-3 flex items-center gap-2">
+                                        <span>⚡</span>2 Minuten {countBadge(zweiMin.length)}
+                                    </h2>
+                                    {renderList(byPrio(zweiMin), 'zweiMin', 'Keine Kurzaufgaben')}
+                                </div>
+
+                                {/* Sammelbecken */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h2 className="text-xl font-bold t-main flex items-center gap-2">
+                                            <span className="w-3 h-3 bg-blue-500 rounded-full inline-block"></span>
+                                            Sammelbecken {countBadge(sammelbecken.length)}
+                                        </h2>
+                                        {sammelbecken.length > 0 && (
+                                            <button onClick={startReview} className={`${BTN} bg-blue-700 text-white`}>Durchgehen</button>
+                                        )}
+                                    </div>
+                                    {renderList(sammelbecken, 'sammelbecken', 'Dein Sammelbecken ist leer')}
                                 </div>
                             </div>
                         )}
 
+                        {/* BOARD */}
                         {activeTab === 'board' && (
-                            <div className="space-y-6">
-                                {getTasksWithDeadlines().length > 0 && (
-                                    <div className="bg-white rounded-2xl p-5 shadow-md border-2 border-blue-200">
-                                        <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2"><Calendar size={20} />Anstehende Deadlines</h2>
+                            <div className="space-y-7">
+                                {deadlineTasks.length > 0 && (
+                                    <div className="card rounded-2xl p-5 shadow-md">
+                                        <h2 className="text-lg font-bold t-main mb-3 flex items-center gap-2"><Calendar size={20} />Anstehende Deadlines</h2>
                                         <div className="space-y-2">
-                                            {getTasksWithDeadlines().slice(0, 5).map(task => {
+                                            {deadlineTasks.slice(0, 5).map(task => {
                                                 const status = getDeadlineStatus(task.deadline);
                                                 return (
-                                                    <div key={task.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                                    <div key={task.id} className="flex items-center justify-between p-2 rounded-lg app-bg">
                                                         <div className="flex-1">
-                                                            <p className="text-sm font-medium text-gray-800">{task.text}</p>
-                                                            <p className="text-xs text-gray-500">{task.listName}</p>
+                                                            <p className="text-sm font-medium t-main">{task.text}</p>
+                                                            <p className="text-xs t-sub">{task.listName}</p>
                                                         </div>
-                                                        <span className={`text-xs px-2 py-1 rounded-full font-semibold whitespace-nowrap ml-2 ${status.color === 'red' ? 'bg-red-500 text-white' : status.color === 'orange' ? 'bg-orange-500 text-white' : status.color === 'yellow' ? 'bg-yellow-500 text-white' : 'bg-blue-100 text-blue-700'}`}>{status.text}</span>
+                                                        <span className={`text-xs px-2 py-1 rounded-full font-semibold whitespace-nowrap ml-2 ${status.color === 'red' ? 'bg-red-500 text-white' : status.color === 'orange' ? 'bg-orange-500 text-white' : status.color === 'yellow' ? 'bg-yellow-500 text-white' : 'chip'}`}>{status.text}</span>
                                                     </div>
                                                 );
                                             })}
                                         </div>
                                     </div>
                                 )}
+
                                 <div>
-                                    <h2 className="text-xl font-bold text-gray-800 mb-3">Durchgegangen</h2>
-                                    <p className="text-gray-500 text-xs mb-3">2x pro Woche durchsehen</p>
-                                    {durchgegangen.length === 0 ? <p className="text-gray-400 text-sm italic">Keine Aufgaben</p> : durchgegangen.map(task => renderTask(task, 'durchgegangen'))}
+                                    <h2 className="text-xl font-bold t-main mb-1 flex items-center gap-2">
+                                        <span className="w-3 h-3 bg-blue-500 rounded-full inline-block"></span>
+                                        Durchgegangen {countBadge(durchgegangen.length)}
+                                    </h2>
+                                    <p className="t-sub text-xs mb-3">2x pro Woche durchsehen</p>
+                                    {renderList(durchgegangen, 'durchgegangen', 'Keine Aufgaben')}
                                 </div>
+
                                 <div>
-                                    <h2 className="text-xl font-bold text-gray-800 mb-3">Fokus</h2>
-                                    <p className="text-gray-500 text-xs mb-3">Max. 2-3 Aufgaben</p>
-                                    {fokus.length === 0 ? <p className="text-gray-400 text-sm italic">Keine Aufgaben</p> : fokus.map(task => renderTask(task, 'fokus'))}
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2"><Check size={20} />Erledigt</h2>
-                                    {done.length === 0 ? <p className="text-gray-400 text-sm italic">Noch nichts erledigt</p> : done.map(task => (
-                                        <div key={task.id} className="bg-green-50 rounded-xl p-4 border border-green-200 mb-3">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex-1">
-                                                    <p className="text-gray-700 line-through">{task.text}</p>
-                                                    {task.deadline && <p className="text-xs text-gray-500 mt-1">Deadline war: {formatDate(task.deadline)}</p>}
-                                                </div>
-                                                <button onClick={() => deleteTask(task.id, 'done')} className="text-red-400 ml-2"><Trash2 size={18} /></button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-gray-800 mb-3">Irgendwann-vielleicht</h2>
-                                    {irgendwann.length === 0 ? <p className="text-gray-400 text-sm italic">Keine Projekte</p> : irgendwann.map(task => renderTask(task, 'irgendwann'))}
+                                    <h2 className="text-xl font-bold t-main mb-3 flex items-center gap-2">
+                                        <span className="w-3 h-3 bg-slate-400 rounded-full inline-block"></span>
+                                        Irgendwann-vielleicht {countBadge(irgendwann.length)}
+                                    </h2>
+                                    {renderList(irgendwann, 'irgendwann', 'Keine Projekte für später')}
                                 </div>
                             </div>
                         )}
 
+                        {/* MEHR */}
                         {activeTab === 'mehr' && (
                             <div className="space-y-6">
-                                <div className="bg-white rounded-2xl p-5 shadow-md">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2"><Star size={20} />Mein Nordstern</h2>
-                                    <textarea value={nordstern} onChange={(e) => setNordstern(e.target.value)} placeholder="Meine Vision..." className="w-full p-3 border-2 border-blue-200 rounded-xl focus:outline-none focus:border-blue-500 min-h-32" />
+                                <div className="card rounded-2xl p-5 shadow-md">
+                                    <h2 className="text-xl font-bold t-main mb-3 flex items-center gap-2"><span className="text-yellow-500"><Star size={20} /></span>Mein Nordstern</h2>
+                                    <textarea value={nordstern} onChange={(e) => setNordstern(e.target.value)} placeholder="Meine Vision..." className="field w-full p-3 rounded-xl min-h-32" />
                                 </div>
-                                <div className="bg-white rounded-2xl p-5 shadow-md">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2"><X size={20} />Stop-Doing Liste</h2>
-                                    <input type="text" placeholder="Neue Sache..." className="w-full p-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 mb-3" onKeyPress={(e) => { if (e.key === 'Enter' && e.target.value.trim()) { setStopDoing([...stopDoing, { id: Date.now(), text: e.target.value }]); e.target.value = ''; }}} />
+
+                                <div className="card rounded-2xl p-5 shadow-md">
+                                    <h2 className="text-xl font-bold t-main mb-3 flex items-center gap-2"><span className="text-red-500"><X size={20} /></span>Stop-Doing Liste</h2>
+                                    <input type="text" placeholder="Neue Sache..." className="field w-full p-2 rounded-lg mb-3" onKeyPress={(e) => { if (e.key === 'Enter' && e.target.value.trim()) { setStopDoing([...stopDoing, { id: Date.now(), text: e.target.value.trim() }]); e.target.value = ''; }}} />
                                     {stopDoing.map(item => (
-                                        <div key={item.id} className="bg-red-50 rounded-lg p-3 flex justify-between border border-red-100 mb-2">
-                                            <p className="text-sm">{item.text}</p>
-                                            <button onClick={() => deleteTask(item.id, 'stopDoing')} className="text-red-400"><Trash2 size={16} /></button>
+                                        <div key={item.id} className="rounded-lg p-3 flex justify-between items-center mb-2 app-bg" style={{ borderLeft: '4px solid #ef4444' }}>
+                                            <p className="text-sm t-main">{item.text}</p>
+                                            <button onClick={() => deleteTask(item, 'stopDoing')} className="text-red-500 ml-2"><Trash2 size={16} /></button>
                                         </div>
                                     ))}
                                 </div>
 
+                                {/* Erledigt (aufklappbar) */}
+                                <div className="card rounded-2xl p-5 shadow-md">
+                                    <button onClick={() => setShowDone(!showDone)} className="w-full flex items-center justify-between">
+                                        <span className="text-xl font-bold t-main flex items-center gap-2">
+                                            <span className="text-emerald-600"><Check size={20} /></span>Erledigt {countBadge(done.length)}
+                                        </span>
+                                        <span className="t-sub">{doneOpen ? <ChevronDown size={22} /> : <ChevronRight size={22} />}</span>
+                                    </button>
+                                    {doneOpen && (
+                                        <div className="mt-4">
+                                            {doneVisible.length === 0 ? (
+                                                <p className="t-sub text-sm italic">{q ? 'Keine Treffer' : 'Noch nichts erledigt'}</p>
+                                            ) : doneVisible.slice().reverse().map(task => (
+                                                <div key={task.id} className="rounded-xl p-3 mb-2 app-bg" style={{ borderLeft: '4px solid #10b981' }}>
+                                                    <div className="flex items-start gap-1">
+                                                        <div className="flex-1">
+                                                            <p className="t-main text-sm line-through break-words">{task.text}</p>
+                                                            <p className="text-xs t-sub mt-1">
+                                                                {task.doneAt ? `Erledigt am ${formatDate(task.doneAt)}` : 'Erledigt'}
+                                                                {task.deadline ? ` · Deadline war ${formatDate(task.deadline)}` : ''}
+                                                            </p>
+                                                        </div>
+                                                        <button onClick={() => deleteTask(task, 'done')} className="text-red-500 p-1" aria-label="Löschen"><Trash2 size={16} /></button>
+                                                    </div>
+                                                    <button onClick={() => restoreDone(task)} className="text-sm px-3 py-1.5 rounded-lg font-semibold chip mt-2">Zurückholen</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Datensicherung */}
-                                <div className="bg-white rounded-2xl p-5 shadow-md border-2 border-green-200">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-2">💾 Datensicherung</h2>
-                                    <p className="text-gray-600 text-sm mb-4">
+                                <div className="card rounded-2xl p-5 shadow-md">
+                                    <h2 className="text-xl font-bold t-main mb-2">💾 Datensicherung</h2>
+                                    <p className="t-sub text-sm mb-4">
                                         Kopiere dein Backup und füge es in eine Notiz ein. Zum Wiederherstellen fügst du den Text unten ein.
                                     </p>
-                                    <button onClick={copyBackup} className="w-full py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold shadow-md mb-3">
+                                    <button onClick={copyBackup} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold shadow-md mb-3">
                                         Backup kopieren
                                     </button>
                                     <textarea
                                         value={backupText}
                                         onChange={(e) => setBackupText(e.target.value)}
                                         placeholder="Zum Wiederherstellen: Backup hier einfügen..."
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 text-xs min-h-24 mb-3"
+                                        className="field w-full p-3 rounded-xl min-h-24 mb-3"
+                                        style={{ fontSize: '12px' }}
                                     />
-                                    <button onClick={restoreBackup} disabled={!backupText.trim()} className="w-full py-3 bg-blue-500 text-white rounded-xl font-semibold disabled:opacity-40">
+                                    <button onClick={restoreBackup} disabled={!backupText.trim()} className="w-full py-3 bg-blue-700 text-white rounded-xl font-semibold disabled:opacity-40">
                                         Backup wiederherstellen
                                     </button>
-                                    {backupMsg && <p className="text-sm mt-3 text-gray-700">{backupMsg}</p>}
+                                    {backupMsg && <p className="text-sm mt-3 t-main">{backupMsg}</p>}
                                 </div>
+
+                                <p className="text-center text-xs t-sub">Kopffrei · Version {APP_VERSION}</p>
                             </div>
                         )}
                     </div>
 
-                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg max-w-md mx-auto">
-                        <div className="flex justify-around p-3">
-                            <button onClick={() => setActiveTab('sammelbecken')} className={`flex-1 py-3 rounded-xl font-semibold ${activeTab === 'sammelbecken' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md' : 'text-gray-500'}`}>Sammeln</button>
-                            <button onClick={() => setActiveTab('board')} className={`flex-1 py-3 rounded-xl font-semibold mx-2 ${activeTab === 'board' ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md' : 'text-gray-500'}`}>Board</button>
-                            <button onClick={() => setActiveTab('mehr')} className={`flex-1 py-3 rounded-xl font-semibold ${activeTab === 'mehr' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md' : 'text-gray-500'}`}>Mehr</button>
+                    {/* DURCHGEHEN-MODUS */}
+                    {reviewIds && (
+                        <div className="fixed inset-0 z-40 app-bg overflow-y-auto">
+                            <div className="max-w-md mx-auto p-5 pt-14 pb-36">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-2xl font-bold t-main">Durchgehen</h2>
+                                    <button onClick={closeReview} className="chip rounded-lg p-2" aria-label="Schließen"><X size={22} /></button>
+                                </div>
+
+                                {reviewTask ? (
+                                    <>
+                                        <p className="t-sub text-sm mb-2">Aufgabe {reviewPos + 1} von {reviewIds.length}</p>
+                                        <div className="chip rounded-full h-2 mb-5 overflow-hidden">
+                                            <div className="bg-blue-600 h-2" style={{ width: `${(reviewPos / reviewIds.length) * 100}%` }}></div>
+                                        </div>
+                                        <div className="card rounded-2xl p-6 shadow-md mb-5">
+                                            <p className="t-main text-xl font-semibold break-words">{reviewTask.text}</p>
+                                            {deadlineBadge(reviewTask)}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button onClick={() => reviewMove('fokus')} className="py-4 rounded-xl font-semibold bg-emerald-600 text-white">In Fokus</button>
+                                            <button onClick={() => reviewMove('zweiMin')} className="py-4 rounded-xl font-semibold bg-teal-600 text-white">⚡ 2 Min</button>
+                                            <button onClick={() => reviewMove('durchgegangen')} className="py-4 rounded-xl font-semibold bg-blue-600 text-white">Durchgegangen</button>
+                                            <button onClick={() => reviewMove('irgendwann')} className="py-4 rounded-xl font-semibold chip">Später</button>
+                                            <button onClick={() => reviewMove('done')} className="py-4 rounded-xl font-semibold chip">✓ Schon erledigt</button>
+                                            <button onClick={() => reviewMove('delete')} className="py-4 rounded-xl font-semibold bg-red-500 text-white">Löschen</button>
+                                        </div>
+                                        <button onClick={() => setReviewIndex(reviewPos + 1)} className="w-full mt-4 py-3 rounded-xl font-semibold t-sub">Überspringen</button>
+                                    </>
+                                ) : (
+                                    <div className="text-center py-16">
+                                        <p className="text-5xl mb-4">🎉</p>
+                                        <p className="t-main text-xl font-bold mb-2">Fertig!</p>
+                                        <p className="t-sub mb-6">Du bist alle Aufgaben durchgegangen.</p>
+                                        <button onClick={closeReview} className="px-6 py-3 rounded-xl font-semibold bg-blue-700 text-white">Schließen</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* RÜCKGÄNGIG-LEISTE */}
+                    {undo && (
+                        <div className="fixed left-0 right-0 z-50 px-4 max-w-md mx-auto" style={{ bottom: 'calc(88px + env(safe-area-inset-bottom))' }}>
+                            <div className="rounded-xl shadow-lg px-4 py-3 flex items-center justify-between gap-3" style={{ background: '#111827', border: '1px solid #475569' }}>
+                                <span className="text-white text-sm">{undo.label}</span>
+                                <button onClick={doUndo} className="text-teal-300 font-bold text-sm whitespace-nowrap">Rückgängig</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* NAVIGATION */}
+                    <div className="fixed bottom-0 left-0 right-0 nav shadow-lg max-w-md mx-auto z-30">
+                        <div className="flex justify-around p-3 gap-2">
+                            <button onClick={() => setActiveTab('start')} className={tabClass('start')}>
+                                Start{tabBadge(sammelbecken.length, activeTab === 'start')}
+                            </button>
+                            <button onClick={() => setActiveTab('board')} className={tabClass('board')}>
+                                Board{tabBadge(boardCount, activeTab === 'board')}
+                            </button>
+                            <button onClick={() => setActiveTab('mehr')} className={tabClass('mehr')}>
+                                Mehr
+                            </button>
                         </div>
                     </div>
                 </div>
