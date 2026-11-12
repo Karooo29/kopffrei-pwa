@@ -25,7 +25,6 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // Lucide Icons als SVG
         const Plus = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
         const Check = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>;
         const X = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
@@ -37,6 +36,8 @@
         const Star = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
         const AlertCircle = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
         const Download = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+
+        const STORAGE_KEY = 'kopffrei-data';
 
         const KopffreiApp = () => {
             const [activeTab, setActiveTab] = useState('sammelbecken');
@@ -55,6 +56,9 @@
             const [showDeadlineInput, setShowDeadlineInput] = useState(false);
             const [deferredPrompt, setDeferredPrompt] = useState(null);
             const [showInstallButton, setShowInstallButton] = useState(false);
+            const [loaded, setLoaded] = useState(false);
+            const [backupText, setBackupText] = useState('');
+            const [backupMsg, setBackupMsg] = useState('');
 
             // PWA Installation
             useEffect(() => {
@@ -75,11 +79,58 @@
                 setDeferredPrompt(null);
             };
 
-            // LocalStorage
+            // Laden
             useEffect(() => {
-                const saved = localStorage.getItem('kopffrei-data');
-                if (saved) {
-                    const data = JSON.parse(saved);
+                try {
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        setSammelbecken(data.sammelbecken || []);
+                        setDurchgegangen(data.durchgegangen || []);
+                        setFokus(data.fokus || []);
+                        setDone(data.done || []);
+                        setIrgendwann(data.irgendwann || []);
+                        setStopDoing(data.stopDoing || []);
+                        setNordstern(data.nordstern || '');
+                    }
+                } catch (e) {
+                    console.log('Laden fehlgeschlagen', e);
+                }
+                setLoaded(true);
+            }, []);
+
+            // Speichern (erst nach dem Laden, damit nichts überschrieben wird)
+            useEffect(() => {
+                if (!loaded) return;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    sammelbecken, durchgegangen, fokus, done, irgendwann, stopDoing, nordstern
+                }));
+            }, [loaded, sammelbecken, durchgegangen, fokus, done, irgendwann, stopDoing, nordstern]);
+
+            // Backup
+            const getBackupString = () => JSON.stringify({
+                app: 'kopffrei',
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                sammelbecken, durchgegangen, fokus, done, irgendwann, stopDoing, nordstern
+            });
+
+            const copyBackup = async () => {
+                const text = getBackupString();
+                setBackupText(text);
+                try {
+                    await navigator.clipboard.writeText(text);
+                    setBackupMsg('✅ Backup kopiert! Füge es jetzt in einer Notiz ein.');
+                } catch (e) {
+                    setBackupMsg('⚠️ Automatisches Kopieren hat nicht geklappt. Markiere den Text unten und kopiere ihn von Hand.');
+                }
+            };
+
+            const restoreBackup = () => {
+                try {
+                    const data = JSON.parse(backupText);
+                    if (data.app !== 'kopffrei') throw new Error('Kein Kopffrei-Backup');
+                    if (!window.confirm('Aktuelle Aufgaben werden durch das Backup ersetzt. Fortfahren?')) return;
                     setSammelbecken(data.sammelbecken || []);
                     setDurchgegangen(data.durchgegangen || []);
                     setFokus(data.fokus || []);
@@ -87,20 +138,18 @@
                     setIrgendwann(data.irgendwann || []);
                     setStopDoing(data.stopDoing || []);
                     setNordstern(data.nordstern || '');
+                    setBackupMsg('✅ Backup wiederhergestellt!');
+                    setBackupText('');
+                } catch (e) {
+                    setBackupMsg('❌ Das war kein gültiges Backup. Bitte den kompletten Text einfügen.');
                 }
-            }, []);
-
-            useEffect(() => {
-                localStorage.setItem('kopffrei-data', JSON.stringify({
-                    sammelbecken, durchgegangen, fokus, done, irgendwann, stopDoing, nordstern
-                }));
-            }, [sammelbecken, durchgegangen, fokus, done, irgendwann, stopDoing, nordstern]);
+            };
 
             const addTask = () => {
                 if (newTask.trim()) {
-                    setSammelbecken([...sammelbecken, { 
-                        id: Date.now(), 
-                        text: newTask, 
+                    setSammelbecken([...sammelbecken, {
+                        id: Date.now(),
+                        text: newTask,
                         deadline: newTaskDeadline || null,
                         createdAt: new Date().toISOString()
                     }]);
@@ -117,7 +166,7 @@
                 const deadlineDate = new Date(deadline);
                 deadlineDate.setHours(0, 0, 0, 0);
                 const diffDays = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
-                
+
                 if (diffDays < 0) return { status: 'overdue', color: 'red', text: 'Überfällig!' };
                 if (diffDays === 0) return { status: 'today', color: 'red', text: 'Heute!' };
                 if (diffDays === 1) return { status: 'tomorrow', color: 'orange', text: 'Morgen' };
@@ -165,13 +214,15 @@
                 ].filter(t => t.deadline).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
             };
 
-            const TaskCard = ({ task, listName }) => {
+            // Wird als normale Funktion aufgerufen (nicht als Komponente),
+            // damit das Eingabefeld beim Tippen den Fokus behält.
+            const renderTask = (task, listName) => {
                 const deadlineStatus = getDeadlineStatus(task.deadline);
                 const borderColors = { red: 'border-red-400 bg-red-50', orange: 'border-orange-400 bg-orange-50', yellow: 'border-yellow-400 bg-yellow-50', blue: 'border-blue-100 bg-white' };
                 const badgeColors = { red: 'bg-red-500 text-white', orange: 'bg-orange-500 text-white', yellow: 'bg-yellow-500 text-white', blue: 'bg-blue-100 text-blue-700' };
 
                 return (
-                    <div className={`rounded-xl p-4 mb-3 shadow-sm border ${deadlineStatus ? borderColors[deadlineStatus.color] : 'border-blue-100 bg-white'}`}>
+                    <div key={task.id} className={`rounded-xl p-4 mb-3 shadow-sm border ${deadlineStatus ? borderColors[deadlineStatus.color] : 'border-blue-100 bg-white'}`}>
                         {editingTask === task.id ? (
                             <div className="space-y-3">
                                 <input type="text" value={editText} onChange={(e) => setEditText(e.target.value)} className="w-full p-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" autoFocus />
@@ -239,7 +290,7 @@
                         </div>
                     </div>
 
-                    <div className="p-5 pb-24">
+                    <div className="p-5 pb-28">
                         {activeTab === 'sammelbecken' && (
                             <div>
                                 <div className="mb-6">
@@ -264,10 +315,9 @@
                                 <div className="space-y-3">
                                     {sammelbecken.length === 0 ? (
                                         <div className="text-center py-12 text-gray-400">
-                                            <Circle size={48} className="mx-auto mb-3 opacity-30" />
                                             <p>Dein Sammelbecken ist leer</p>
                                         </div>
-                                    ) : sammelbecken.map(task => <TaskCard key={task.id} task={task} listName="sammelbecken" />)}
+                                    ) : sammelbecken.map(task => renderTask(task, 'sammelbecken'))}
                                 </div>
                             </div>
                         )}
@@ -296,12 +346,12 @@
                                 <div>
                                     <h2 className="text-xl font-bold text-gray-800 mb-3">Durchgegangen</h2>
                                     <p className="text-gray-500 text-xs mb-3">2x pro Woche durchsehen</p>
-                                    {durchgegangen.length === 0 ? <p className="text-gray-400 text-sm italic">Keine Aufgaben</p> : durchgegangen.map(task => <TaskCard key={task.id} task={task} listName="durchgegangen" />)}
+                                    {durchgegangen.length === 0 ? <p className="text-gray-400 text-sm italic">Keine Aufgaben</p> : durchgegangen.map(task => renderTask(task, 'durchgegangen'))}
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-bold text-gray-800 mb-3">Fokus</h2>
                                     <p className="text-gray-500 text-xs mb-3">Max. 2-3 Aufgaben</p>
-                                    {fokus.length === 0 ? <p className="text-gray-400 text-sm italic">Keine Aufgaben</p> : fokus.map(task => <TaskCard key={task.id} task={task} listName="fokus" />)}
+                                    {fokus.length === 0 ? <p className="text-gray-400 text-sm italic">Keine Aufgaben</p> : fokus.map(task => renderTask(task, 'fokus'))}
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2"><Check size={20} />Erledigt</h2>
@@ -319,7 +369,7 @@
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-bold text-gray-800 mb-3">Irgendwann-vielleicht</h2>
-                                    {irgendwann.length === 0 ? <p className="text-gray-400 text-sm italic">Keine Projekte</p> : irgendwann.map(task => <TaskCard key={task.id} task={task} listName="irgendwann" />)}
+                                    {irgendwann.length === 0 ? <p className="text-gray-400 text-sm italic">Keine Projekte</p> : irgendwann.map(task => renderTask(task, 'irgendwann'))}
                                 </div>
                             </div>
                         )}
@@ -340,6 +390,27 @@
                                         </div>
                                     ))}
                                 </div>
+
+                                {/* Datensicherung */}
+                                <div className="bg-white rounded-2xl p-5 shadow-md border-2 border-green-200">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-2">💾 Datensicherung</h2>
+                                    <p className="text-gray-600 text-sm mb-4">
+                                        Kopiere dein Backup und füge es in eine Notiz ein. Zum Wiederherstellen fügst du den Text unten ein.
+                                    </p>
+                                    <button onClick={copyBackup} className="w-full py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold shadow-md mb-3">
+                                        Backup kopieren
+                                    </button>
+                                    <textarea
+                                        value={backupText}
+                                        onChange={(e) => setBackupText(e.target.value)}
+                                        placeholder="Zum Wiederherstellen: Backup hier einfügen..."
+                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 text-xs min-h-24 mb-3"
+                                    />
+                                    <button onClick={restoreBackup} disabled={!backupText.trim()} className="w-full py-3 bg-blue-500 text-white rounded-xl font-semibold disabled:opacity-40">
+                                        Backup wiederherstellen
+                                    </button>
+                                    {backupMsg && <p className="text-sm mt-3 text-gray-700">{backupMsg}</p>}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -359,11 +430,10 @@
     </script>
 
     <script>
-        // Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('service-worker.js')
-                    .then(reg => console.log('Service Worker registriert'))
+                    .then(() => console.log('Service Worker registriert'))
                     .catch(err => console.log('Service Worker Fehler:', err));
             });
         }
